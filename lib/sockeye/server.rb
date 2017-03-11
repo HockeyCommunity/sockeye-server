@@ -7,23 +7,44 @@ require 'websocket-eventmachine-server'
 module Sockeye
   class Server
 
-    attr_accessor :connections, :host, :port, :secret_token, :authentication_method
+    attr_accessor :connections, :connection_map, :host, :port, :secret_token, :authentication_method
 
     def initialize(host:, port:, secret_token:, authentication_method: nil)
+      self.connections = {}
+      self.connection_map = {}
       self.host = host
       self.port = port
       self.secret_token = secret_token
       self.authentication_method = authentication_method
     end
 
+    def add_connection(identifier:, connection:)
+      connections[identifier] = [] if connections[identifier].nil?
+      connections[identifier] << connection
+      connection_map[connection.object_id] = identifier
+      puts "============="
+      puts connections.inspect
+      puts "---"
+      puts connection_map.inspect
+      puts "============="
+    end
+
+    def remove_connection(connection)
+      identifier = connection_map[connection.object_id]
+      connections[identifier].delete(connection)
+      connections.delete(identifier) if connections[identifier].empty?
+      connection_map.delete(connection.object_id)
+      puts "============="
+      puts connections.inspect
+      puts "---"
+      puts connection_map.inspect
+      puts "============="
+    end
+
     def listen
 
       EM.run do
         WebSocket::EventMachine::Server.start(host: self.host, port: self.port) do |ws|
-
-          ws.onopen do
-            puts "Client connected"
-          end
 
           ws.onmessage do |message, type|
 
@@ -44,12 +65,9 @@ module Sockeye
               case message_json[:action].to_sym
               when :authenticate
                 puts "authenticate action"
-                authentication_result = authenticate(message_json[:token])
+                authentication_result = authenticate(message_json[:payload])
                 if authentication_result
-                  puts "================="
-                  puts self.inspect
-                  puts ws.inspect
-                  puts "================="
+                  add_connection(identifier: authentication_result, connection: ws)
                   ws.send({payload: "authenticated", status: 200}.to_json, :type => :text)
                 else
                   puts "Authentication failure"
@@ -81,6 +99,7 @@ module Sockeye
           end
 
           ws.onclose do
+            remove_connection(ws)
             puts "Client disconnected"
           end
         end
