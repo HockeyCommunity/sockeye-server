@@ -1,5 +1,4 @@
-# require "sockeye/server/version"
-
+require "sockeye/server/version"
 require 'json'
 require 'eventmachine'
 require 'websocket-eventmachine-server'
