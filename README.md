@@ -1,8 +1,6 @@
-# Sockeye::Server
+# 🐟 Sockeye::Server
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/sockeye/server`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+This project is currently under development, and is not usable. Please check back soon.
 
 ## Installation
 
@@ -22,7 +20,17 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+```ruby
+# You probably want to make an API call to somewhere here to verify the authenticity of the token.
+# If it is OK, return their user id or some unique identifier, otherwise return nil.
+#
+def authenticate(token)
+  return token
+end
+
+server = Sockeye::Server.new(host: "sockeye.local", port: 8443, secret_token: "SUPER_STRONG_SECURITY_TOKEN", authentication_method: Proc.new {|token| authenticate(token)})
+server.listen
+```
 
 ## Development
 
