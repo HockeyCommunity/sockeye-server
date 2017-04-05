@@ -61,7 +61,7 @@ module Sockeye
         next unless identified_connections.is_a? Array
         identified_connections.each do |connection|
           begin
-            connection.send({payload: payload, status: 200}.to_json, :type => :text)
+            connection.send({payload: payload, status: payload.dig(:status) || 200}.to_json, :type => :text)
           rescue
           end
         end
@@ -110,7 +110,7 @@ module Sockeye
               #
               when :deliver
                 if message_json[:secret_token] == self.secret_token
-                  deliver_to_many(payload: message_json[:payload], identifiers: message_json[:identifiers])
+                  deliver_to_many(payload: message_json[:payload], identifiers: [message_json[:identifiers]].flatten)
                   ws.send({payload: "payload pushed", status: 201}.to_json, :type => :text)
                   ws.close
                 else
