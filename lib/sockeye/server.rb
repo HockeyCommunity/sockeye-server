@@ -14,6 +14,7 @@ module Sockeye
       self.port = port
       self.secret_token = secret_token
       self.authentication_method = authentication_method
+      puts "welcome"
     end
 
     # Safely parse data as JSON, but return nil values on failure
@@ -30,16 +31,18 @@ module Sockeye
     # Call the supplied authentication method
     #
     def authenticate(token)
-      puts "authenticate"
-      return self.authentication_method.call(token)
+      puts "authenticating:"
+      puts token
+      authenticated = self.authentication_method.call(token)
+      puts authenticated
+      return authenticated
     end
 
     # Add a connection to the list and add a map entry to link the
     # connection object with an authenticated identifier
     #
     def add_connection(identifier:, connection:)
-      puts "add_connection"
-      puts "identifier"
+      puts "adding connection: "
       puts identifier
       connections[identifier] = [] if connections[identifier].nil?
       connections[identifier] << connection
@@ -49,9 +52,8 @@ module Sockeye
     # Safely remove the specified connection from the connections lists
     #
     def remove_connection(connection)
-      puts "remove_connection"
       identifier = connection_map[connection.object_id]
-      puts "identifier:"
+      puts "removing connection:"
       puts identifier
       if connections[identifier].is_a? Array
         connections[identifier].delete(connection)
@@ -64,19 +66,21 @@ module Sockeye
     # then attempt to push the payload to each of them
     #
     def deliver_to_many(payload:, identifiers:)
-      puts "deliver_to_many"
+      puts "delivering payload:"
+      puts payload.inspect
+      puts "to identifiers:"
+      puts identifiers.inspect
       identifiers.each do |identifier|
-        puts "delivering to identifier:"
+        puts "identifier:"
         puts identifier
         identified_connections = connections[identifier]
-        puts "identified_connections"
-        puts identified_connections
+        puts "found #{identified_connections&.count.to_i} connections"
         next unless identified_connections.is_a? Array
         identified_connections.each do |connection|
-          puts "connection"
-          puts connection
+          puts "connection:"
+          puts connection.inspect
           begin
-            puts "sending"
+            puts "sending payload"
             connection.send({payload: payload, status: payload.dig(:status) || 200}.to_json, :type => :text)
             puts "sent"
           rescue
@@ -95,11 +99,13 @@ module Sockeye
       EM.run do
         WebSocket::EventMachine::Server.start(host: self.host, port: self.port) do |ws|
 
+          puts "listening"
+
           # Called when a new message arrives at the server
           #
           ws.onmessage do |message, type|
-
             puts "onmessage"
+
             # Attempt to parse the received data as JSON
             #
             message_json = json_try_parse(message)
@@ -116,6 +122,7 @@ module Sockeye
               # method supplied on server setup
               #
               when :authenticate
+                puts "authentication reuqest"
                 authentication_result = authenticate(message_json[:payload])
                 if authentication_result
                   add_connection(identifier: authentication_result, connection: ws)
@@ -137,12 +144,13 @@ module Sockeye
                   ws.send({payload: "payload pushed", status: 201}.to_json, :type => :text)
                   ws.close
                 else
-                  puts "bad token"
+                  puts "delivery auth failure"
                   ws.send({payload: "authentication failure", status: 401}.to_json, :type => :text)
                   ws.close
                 end
 
               else
+                puts "invalid request"
                 ws.send({payload: "invalid action", status: 405}.to_json, :type => :text)
                 ws.close
               end
